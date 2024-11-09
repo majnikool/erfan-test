@@ -32,7 +32,9 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           else
-            echo "version=latest" >> $GITHUB_OUTPUT
+            # Use 0.0.0-dev.$(date +%s) for non-tag builds
+            echo "version=0.0.0-dev.$(date +%s)" >> $GITHUB_OUTPUT
+            echo "docker_tag=latest" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and Push Docker Image
@@ -40,7 +42,7 @@ jobs:
           IMAGE_NAME: ${{ secrets.DOCKER_REPO }}
         run: |
           # For non-tag pushes, use 'latest' tag
-          if [[ "${{ steps.version.outputs.version }}" == "latest" ]]; then
+          if [[ "${{ steps.version.outputs.docker_tag }}" == "latest" ]]; then
             docker buildx build --platform linux/amd64,linux/arm64 \
               -t $IMAGE_NAME:latest \
               --push .
@@ -73,7 +75,8 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           else
-            echo "version=latest" >> $GITHUB_OUTPUT
+            # Use 0.0.0-dev.$(date +%s) for non-tag builds
+            echo "version=0.0.0-dev.$(date +%s)" >> $GITHUB_OUTPUT
           fi
 
       - name: Package Helm Chart
@@ -125,8 +128,11 @@ jobs:
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+            echo "docker_tag=${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
           else
-            echo "version=latest" >> $GITHUB_OUTPUT
+            # Use 0.0.0-dev.$(date +%s) for non-tag builds
+            echo "version=0.0.0-dev.$(date +%s)" >> $GITHUB_OUTPUT
+            echo "docker_tag=latest" >> $GITHUB_OUTPUT
           fi
 
       - name: Create namespace if not exists
@@ -142,4 +148,4 @@ jobs:
           helm upgrade --install nginx-app ./nginx-app \
             --namespace ingress \
             --set image.repository=$IMAGE_NAME \
-            --set image.tag=${{ steps.version.outputs.version }}
+            --set image.tag=${{ steps.version.outputs.docker_tag }}
