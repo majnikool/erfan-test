@@ -86,8 +86,12 @@ jobs:
 
       - name: Configure kubectl for GKE
         run: |
-          # Extract project_id from the GKE_KEY_JSON
-          PROJECT_ID=$(echo "${{ secrets.GKE_KEY_JSON }}" | jq -r '.project_id')
+          # Parse project_id from the GKE_KEY_JSON using printf to handle newlines
+          PROJECT_ID=$(printf '%s' "${{ secrets.GKE_KEY_JSON }}" | jq -r '.project_id')
+          if [ -z "$PROJECT_ID" ]; then
+            echo "Error: PROJECT_ID is empty. Ensure GKE_KEY_JSON contains the project_id."
+            exit 1
+          fi
           
           # Retrieve cluster credentials using the zone and cluster name from secrets
           gcloud container clusters get-credentials "${{ secrets.GKE_CLUSTER }}" \
