@@ -1,0 +1,27 @@
+replicaCount: 2
+
+image:
+  repository: majidni/nginx-custom  # Docker Hub repository
+  tag: "2.0"  # Image version tag
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP  # Or LoadBalancer if you want external access
+  port: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: erfan.erfan-lab.shop  # Replace with your domain
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources: {}  # Specify if you have resource requests/limits for containers
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
