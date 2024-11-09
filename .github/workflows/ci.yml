@@ -79,10 +79,16 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v3
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v0
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
         with:
-          credentials_json: ${{ secrets.GKE_KEY_JSON }}
+          service_account_key: ${{ secrets.GKE_KEY_JSON }}
+          project_id: ${{ secrets.GKE_PROJECT }}
+          export_default_credentials: true
+          install_components: gke-gcloud-auth-plugin
+
+      - name: Set USE_GKE_GCLOUD_AUTH_PLUGIN Environment Variable
+        run: echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
 
       - name: Configure kubectl for GKE
         run: |
@@ -90,21 +96,17 @@ jobs:
             --zone "${{ secrets.GKE_ZONE }}" \
             --project "${{ secrets.GKE_PROJECT }}"
 
-      - name: Install GKE Auth Plugin and Configure PATH
+      - name: Install Helm
         run: |
-          echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
-          sudo mkdir -p /usr/share/keyrings
-          curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo tee /usr/share/keyrings/cloud.google.gpg > /dev/null
-          sudo apt-get update && sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin
-          echo 'export PATH=$PATH:/usr/lib/google-cloud-sdk/bin' >> $GITHUB_ENV
-          echo 'export USE_GKE_GCLOUD_AUTH_PLUGIN=True' >> $GITHUB_ENV
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
       - name: Deploy Helm Chart
         env:
           IMAGE_NAME: ${{ secrets.DOCKER_REPO }}
+          version: ${{ env.version }}
         run: |
           helm upgrade --install nginx-app ./nginx-app \
             --namespace ingress \
             --create-namespace \
             --set image.repository=$IMAGE_NAME \
-            --set image.tag=${{ env.version }}
+            --set image.tag=$version
