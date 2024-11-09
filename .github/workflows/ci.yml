@@ -10,7 +10,6 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
@@ -39,7 +38,6 @@ jobs:
   helm:
     runs-on: ubuntu-latest
     needs: build-and-push
-
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
@@ -74,7 +72,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: helm
-
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
@@ -82,31 +79,38 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
-          service_account_key: ${{ secrets.GKE_KEY_JSON }}
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GKE_KEY_JSON }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v1
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_ZONE }}
           project_id: ${{ secrets.GKE_PROJECT }}
-          export_default_credentials: true
-          install_components: gke-gcloud-auth-plugin
 
-      - name: Set USE_GKE_GCLOUD_AUTH_PLUGIN Environment Variable
-        run: echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
-
-      - name: Configure kubectl for GKE
+      - name: Set Version
         run: |
-          gcloud container clusters get-credentials "${{ secrets.GKE_CLUSTER }}" \
-            --zone "${{ secrets.GKE_ZONE }}" \
-            --project "${{ secrets.GKE_PROJECT }}"
-
-      - name: Install Helm
-        run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          else
+            echo "version=1.0.0" >> $GITHUB_ENV
+          fi
 
       - name: Deploy Helm Chart
         env:
           IMAGE_NAME: ${{ secrets.DOCKER_REPO }}
-          version: ${{ env.version }}
+          KUBECONFIG: /tmp/kubeconfig
         run: |
           helm upgrade --install nginx-app ./nginx-app \
             --namespace ingress \
             --create-namespace \
             --set image.repository=$IMAGE_NAME \
-            --set image.tag=$version
+            --set image.tag=${{ env.version }}
