@@ -86,13 +86,13 @@ jobs:
 
       - name: Configure kubectl for GKE
         run: |
-          # Extract project_id, and define cluster name and zone manually
-          export PROJECT_ID=$(jq -r '.project_id' <<< "${{ secrets.GKE_KEY_JSON }}")
-          export ZONE="YOUR_ZONE"                # Replace with your actual GKE cluster zone
-          export CLUSTER_NAME="YOUR_CLUSTER_NAME" # Replace with your actual GKE cluster name
-
-          # Authenticate kubectl to the GKE cluster
-          gcloud container clusters get-credentials $CLUSTER_NAME --zone $ZONE --project $PROJECT_ID
+          # Extract project_id from the GKE_KEY_JSON
+          PROJECT_ID=$(echo "${{ secrets.GKE_KEY_JSON }}" | jq -r '.project_id')
+          
+          # Retrieve cluster credentials using the zone and cluster name from secrets
+          gcloud container clusters get-credentials "${{ secrets.GKE_CLUSTER }}" \
+            --zone "${{ secrets.GKE_ZONE }}" \
+            --project "$PROJECT_ID"
 
       - name: Deploy Helm Chart
         env:
