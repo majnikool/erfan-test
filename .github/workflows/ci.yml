@@ -86,17 +86,10 @@ jobs:
 
       - name: Configure kubectl for GKE
         run: |
-          # Parse project_id from the GKE_KEY_JSON using printf to handle newlines
-          PROJECT_ID=$(printf '%s' "${{ secrets.GKE_KEY_JSON }}" | jq -r '.project_id')
-          if [ -z "$PROJECT_ID" ]; then
-            echo "Error: PROJECT_ID is empty. Ensure GKE_KEY_JSON contains the project_id."
-            exit 1
-          fi
-          
-          # Retrieve cluster credentials using the zone and cluster name from secrets
+          # Retrieve cluster credentials using secrets for project, zone, and cluster name
           gcloud container clusters get-credentials "${{ secrets.GKE_CLUSTER }}" \
             --zone "${{ secrets.GKE_ZONE }}" \
-            --project "$PROJECT_ID"
+            --project "${{ secrets.GKE_PROJECT }}"
 
       - name: Deploy Helm Chart
         env:
